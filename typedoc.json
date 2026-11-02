@@ -1,0 +1,43 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "GeoNote \u2014 code documentation",
+  "entryPoints": [
+    "src"
+  ],
+  "entryPointStrategy": "expand",
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ],
+  "out": "docs/api",
+  "readme": "README.md",
+  "projectDocuments": [
+    "docs/ARCHITECTURE.md"
+  ],
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "categorizeByGroup": true,
+  "sort": [
+    "source-order"
+  ],
+  "navigation": {
+    "includeCategories": false,
+    "includeGroups": true
+  },
+  "skipErrorChecking": true,
+  "disableSources": true,
+  "intentionallyNotExported": [
+    "lightColors"
+  ],
+  "highlightLanguages": [
+    "typescript",
+    "tsx",
+    "ts",
+    "javascript",
+    "json",
+    "bash",
+    "powershell",
+    "python",
+    "text"
+  ]
+}
