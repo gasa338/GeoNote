@@ -13,6 +13,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const INSIDE_STORAGE_KEY = 'geonote:inside:v2';
 const STATUS_STORAGE_KEY = 'geonote:geofence-status:v1';
 const REGISTERED_AT_STORAGE_KEY = 'geonote:geofence-registered-at:v1';
+const SIGNATURE_STORAGE_KEY = 'geonote:geofence-signature:v1';
+
+/**
+ * Remembers which circles were registered last time, so they are registered
+ * again only when something changed. (Every registration makes the system
+ * forget where the user is and re-report everything — reminders around that
+ * moment would be lost.)
+ */
+export async function writeRegionsSignature(signature: string): Promise<void> {
+  await AsyncStorage.setItem(SIGNATURE_STORAGE_KEY, signature);
+}
+
+/** The circles registered last time (see {@link writeRegionsSignature}). */
+export async function readRegionsSignature(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(SIGNATURE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
 
 /** Remembers when zones were last registered with the system (see `INITIAL_STATE_WINDOW_MS`). */
 export async function writeRegisteredAt(timestamp: number): Promise<void> {
@@ -72,6 +92,8 @@ export interface GeofenceStatus {
   updatedAt: string;
   /** Error message when `state` is `error`. */
   error?: string;
+  /** Reliable mode: the background tracker (permanent notification) is running. */
+  reliable?: boolean;
 }
 
 /** Reads the last saved tracking status (or `null` before the first refresh). */

@@ -47,7 +47,7 @@ export function describeStatus(
   if (permissions.notifications !== 'granted') return { ok: false, icon: 'notifications-off-outline', text: texts.noNotifications };
   if (!IS_EXPO_GO && permissions.background !== 'granted') return { ok: false, icon: 'navigate-outline', text: texts.needsAlways };
   if (geofence?.state === 'error') return { ok: false, icon: 'warning-outline', text: texts.error };
-  // Everything allowed, but the app health check found the phone holding GeoNote back (battery, sleep…).
+  // Everything allowed, but the app health check found the phone holding Blizu back (battery, sleep…).
   if (health && health.problems.length > 0) return { ok: false, icon: 'battery-half-outline', text: texts.mayBeLate };
   return { ok: true, icon: 'shield-checkmark-outline', text: IS_EXPO_GO ? texts.okWhileOpen : texts.ok };
 }

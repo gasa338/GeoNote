@@ -1,5 +1,5 @@
 /**
- * **Is GeoNote still able to remind me?** — the app watches itself.
+ * **Is Blizu still able to remind me?** — the app watches itself.
  *
  * How it works (all plain functions):
  *
@@ -10,10 +10,10 @@
  * 2. **Sign of life** — every check saves "alive at …" and moves the
  *    **watchdog** notification {@link HEALTH_CONFIG.watchdogHours} hours ahead.
  *    If the phone puts the app to sleep, nobody moves it and the phone itself
- *    shows "GeoNote may be asleep" — the only message that works even when the
+ *    shows "Blizu may be asleep" — the only message that works even when the
  *    app cannot run at all.
  * 3. **Sleep gap** ({@link onAppOpened}) — opening the app after a long silence
- *    shows "GeoNote was asleep from … to …".
+ *    shows "Blizu was asleep from … to …".
  * 4. **Caught late** ({@link recordLateCatch}) — the GPS found you inside a zone
  *    right after opening the app, but the system never reported the arrival:
  *    proof that background reminders were blocked.
@@ -35,6 +35,8 @@ import { addLogEntry } from '@/data/activityLog';
 import { getSettings } from '@/data/settings';
 import { getAllZones } from '@/data/zones';
 import { GEOFENCE_TASK } from '@/geo/constants';
+import { sampleBattery } from '@/features/battery/batteryLog';
+import { isTrackerRunning } from '@/geo/backgroundTracker';
 import { refreshGeofences } from '@/geo/geofenceManager';
 import { formatDateTime, getDictionary } from '@/i18n/dictionaries';
 import { cancelScheduledNotification, showStatusNotification } from '@/notifications/notifications';
@@ -43,7 +45,7 @@ import { IS_EXPO_GO } from '@/utils/runtime';
 import { HEALTH_CONFIG } from './healthConfig';
 import { readHealthState, updateHealthState, type AliveSource, type HealthProblem, type HealthReport, type SleepGap } from './healthState';
 
-/** Id of the scheduled "GeoNote may be asleep" notification. */
+/** Id of the scheduled "Blizu may be asleep" notification. */
 const WATCHDOG_ID = 'health-watchdog';
 /** Id of the "reminders may not pop up" notification. */
 const PROBLEM_NOTICE_ID = 'health-problem';
@@ -56,7 +58,7 @@ let openedAt = 0;
 // ---- 1. Check -------------------------------------------------------------------
 
 /** Looks at everything reminders depend on and returns the problems found. */
-async function findProblems(activeZones: number): Promise<HealthProblem[]> {
+async function findProblems(activeZones: number, source: AliveSource): Promise<HealthProblem[]> {
   const problems: HealthProblem[] = [];
 
   if (!(await safe(() => Location.hasServicesEnabledAsync(), true))) problems.push({ id: 'location-off', severity: 'error' });
@@ -79,6 +81,11 @@ async function findProblems(activeZones: number): Promise<HealthProblem[]> {
       await safe(() => refreshGeofences({ fromBackground: true }), null);
       watching = await safe(() => Location.hasStartedGeofencingAsync(GEOFENCE_TASK), true);
     }
+    // Reliable mode (Android): the background tracker should be running too.
+    if (watching && Platform.OS === 'android' && (await getSettings()).trackingMode === 'reliable' && !(await isTrackerRunning())) {
+      await safe(() => refreshGeofences({ fromBackground: source !== 'app' }), null);
+      if (!(await isTrackerRunning())) problems.push({ id: 'reliable-stopped', severity: source === 'app' ? 'error' : 'warning' });
+    }
     if (!watching) problems.push({ id: 'tracking-stopped', severity: 'error' });
   }
 
@@ -100,7 +107,8 @@ async function findProblems(activeZones: number): Promise<HealthProblem[]> {
 export async function runHealthCheck(source: AliveSource): Promise<HealthReport> {
   const zones = await safe(() => getAllZones(), []);
   const activeZones = zones.filter((zone) => zone.active).length;
-  const problems = activeZones > 0 ? await findProblems(activeZones) : [];
+  const problems = activeZones > 0 ? await findProblems(activeZones, source) : [];
+  void sampleBattery();
   const now = new Date().toISOString();
 
   // Problems remembered from earlier (sleep gap, late catches) stay visible until the user saw them.
@@ -132,7 +140,7 @@ export async function markZoneEventAlive(): Promise<void> {
 
 // ---- 2. Watchdog ------------------------------------------------------------------
 
-/** Moves the "GeoNote may be asleep" notification forward (or removes it when nothing is watched). */
+/** Moves the "Blizu may be asleep" notification forward (or removes it when nothing is watched). */
 async function armWatchdog(activeZones: number): Promise<void> {
   await cancelScheduledNotification(WATCHDOG_ID);
   if (IS_EXPO_GO || activeZones === 0) return;
@@ -191,7 +199,7 @@ export async function onAppOpened(): Promise<SleepGap | null> {
     if (lastAlive && zones.some((zone) => zone.active) && openedAt - lastAlive > HEALTH_CONFIG.sleepGapHours * HOUR_MS) {
       gap = { from: state.lastAliveAt as string, to: new Date(openedAt).toISOString() };
       await updateHealthState((current) => ({ ...current, lastGap: gap }));
-      void addLogEntry('error', `GeoNote was asleep (no background activity) from ${gap.from} to ${gap.to}.`);
+      void addLogEntry('error', `Blizu was asleep (no background activity) from ${gap.from} to ${gap.to}.`);
     }
   }
 

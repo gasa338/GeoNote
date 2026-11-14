@@ -12,6 +12,12 @@
  *    Android it can take 1–3 minutes after you enter a zone.
  * Both send events to `reminderEngine`, which makes sure a zone fires only once.
  *
+ * 3. **Reliable mode** (Android, default): `backgroundTracker` checks GPS
+ *    positions itself in the background, so the phone cannot hold reminders back.
+ *
+ * Circles are registered again **only when they changed** — every registration
+ * makes the system forget the current state.
+ *
  * If there are more zones than the phone allows ({@link MAX_REGIONS}), the
  * nearest ones are registered plus one big helper circle around the user;
  * leaving it triggers this refresh again.
@@ -22,13 +28,23 @@
 import * as Location from 'expo-location';
 
 import { addLogEntry } from '@/data/activityLog';
+import { getSettings } from '@/data/settings';
 import { getAllZones } from '@/data/zones';
 import { distanceMeters } from '@/utils/geo';
 import { IS_EXPO_GO } from '@/utils/runtime';
 
 import { GEOFENCE_TASK, MAX_REGIONS, MIN_RADIUS, REFRESH_REGION_ID } from './constants';
+import { startTracker, stopTracker } from './backgroundTracker';
 import { checkPositionNow, startForegroundWatcher } from './foregroundWatcher';
-import { readInside, writeGeofenceStatus, writeInside, writeRegisteredAt, type GeofenceStatus } from './geoState';
+import {
+  readInside,
+  readRegionsSignature,
+  writeGeofenceStatus,
+  writeInside,
+  writeRegionsSignature,
+  writeRegisteredAt,
+  type GeofenceStatus,
+} from './geoState';
 
 /**
  * The refresh that is currently running (if any). Refreshes can be requested
@@ -110,6 +126,7 @@ async function doRefresh(options: RefreshOptions): Promise<GeofenceStatus> {
     const background = await Location.getBackgroundPermissionsAsync();
     if (background.status !== 'granted') {
       await stopSystemGeofencing();
+      await stopTracker().catch(() => undefined);
       void addLogEntry('info', 'Background tracking off: location "Allow all the time" is not granted.');
       return saveStatus({ state: 'no-permission', mode: 'background', monitored: 0, total: activeZones.length, usesRefreshRegion: false });
     }
@@ -123,6 +140,7 @@ async function doRefresh(options: RefreshOptions): Promise<GeofenceStatus> {
 
     if (activeZones.length === 0) {
       await stopSystemGeofencing();
+      await stopTracker().catch(() => undefined);
       return saveStatus({ state: 'idle', mode: 'background', monitored: 0, total: 0, usesRefreshRegion: false });
     }
 
@@ -158,12 +176,34 @@ async function doRefresh(options: RefreshOptions): Promise<GeofenceStatus> {
       });
     }
 
-    // The system now reports the current state of every zone — remember when,
-    // so reminderEngine does not treat those reports as real arrivals.
-    await writeRegisteredAt(Date.now());
-    await Location.startGeofencingAsync(GEOFENCE_TASK, regions);
+    // Register only if the circles changed (or the phone forgot them).
+    const signature = JSON.stringify(regions.map((r) => [r.identifier, r.latitude.toFixed(5), r.longitude.toFixed(5), Math.round(r.radius)]));
+    const alreadyWatching = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK).catch(() => false);
+    if (!alreadyWatching || signature !== (await readRegionsSignature())) {
+      // The system now reports the current state of every zone — remember when,
+      // so reminderEngine does not treat those reports as real arrivals.
+      await writeRegisteredAt(Date.now());
+      await Location.startGeofencingAsync(GEOFENCE_TASK, regions);
+      await writeRegionsSignature(signature);
+    }
+
+    // ---- 3. Reliable mode (Android) ----------------------------------------
+    const settings = await getSettings();
+    let reliable = false;
+    if (settings.trackingMode === 'reliable') {
+      try {
+        await startTracker(activeZones, settings.language);
+        reliable = true;
+      } catch (error) {
+        // Android does not allow starting it from the background — it starts next time the app opens.
+        void addLogEntry('error', `Reliable mode could not start: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } else {
+      await stopTracker().catch(() => undefined);
+    }
 
     return saveStatus({
+      reliable,
       state: 'active',
       mode: 'background',
       monitored: watched.length,

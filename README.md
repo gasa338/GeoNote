@@ -1,11 +1,13 @@
-# GeoNote — location reminders (version 2.0)
+# Blizu — location reminders (version 2.0)
 
 React Native app (Expo SDK 58, Expo Router, TypeScript).
 Draw a **zone** around a place, add a note or a task list, and get a notification
 (or an alarm) the moment you enter it, leave it, or both — also when the app is closed (APK).
 Zones can be edited and deleted from the zone details or the "⋮" button in any zone list.
 The app also watches itself: if the phone puts it to sleep to save battery, it tells you
-(Settings → Location & notifications → "Is GeoNote working?", see `src/features/health/`).
+(Settings → Location & notifications → "Is Blizu working?", see `src/features/health/`).
+On Android, **reliable mode** (on by default) keeps a small permanent notification so the phone
+cannot hold reminders back; the **Battery** card shows its battery use and turns it off.
 
 - **Map:** OpenStreetMap via Leaflet — no Google key. Optional free CARTO key (`EXPO_PUBLIC_CARTO_KEY` in `.env`) for the design's map style.
 - **Languages:** English (main) and Serbian.
@@ -38,7 +40,7 @@ npx eas-cli@latest build --profile preview --platform android
 
 ## Logo
 
-The "GeoNote" wordmark is drawn in `src/components/Logo.tsx`. To use an image instead, save it as
+The "blizu" wordmark is drawn in `src/components/Logo.tsx`. To use an image instead, save it as
 `assets/images/logo.png` and set `USE_IMAGE_LOGO = true` in that file.
 The phone home-screen icon is `assets/images/icon.png` (1024 × 1024) plus the `android-icon-*.png` files — needs a new build.
 
@@ -58,8 +60,8 @@ The app detects this automatically (`src/utils/runtime.ts → IS_EXPO_GO`).
 2. Add a zone (choose Notification or Alarm, and On entering / On leaving / Both).
 3. Settings → Testing → **Arrive at …** fires the reminder immediately.
 4. Real test: close the app and walk to the place.
-5. On Xiaomi / Samsung / Huawei: Settings → Apps → GeoNote → Battery → **Unrestricted**.
-6. The card **Is GeoNote working?** shows what may block reminders, with a **Fix** button for each.
+5. On Xiaomi / Samsung / Huawei: Settings → Apps → Blizu → Battery → **Unrestricted**.
+6. The card **Is Blizu working?** shows what may block reminders, with a **Fix** button for each.
 
 ## Django model (for phase 2)
 

@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   accentColor: 'blue',
   tabBar: DEFAULT_TAB_BAR,
   onboardingDone: false,
+  trackingMode: 'reliable',
 };
 
 /** Section ids from version 1.2 that were renamed or merged. */

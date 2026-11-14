@@ -1,5 +1,5 @@
 /**
- * The app logo: a pin + the word "GeoNote" (as in the design).
+ * The app logo: a pin + the word "blizu" (as in the design).
  *
  * ### Replacing it with your own logo file
  * 1. Save the logo as `assets/images/logo.png` (transparent background).
@@ -20,7 +20,7 @@ import { spacing } from '@/theme';
 import { AppText, Icon } from './ui';
 
 /** The app name. Change it here if the name changes (the phone label is in `app.config.ts`). */
-export const APP_NAME = 'GeoNote';
+export const APP_NAME = 'Blizu';
 
 /** `true` = show `assets/images/logo.png` instead of the drawn wordmark. */
 const USE_IMAGE_LOGO = false;

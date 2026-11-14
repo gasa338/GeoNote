@@ -22,6 +22,8 @@
 
 // ⚠️ MUST be the first import: defines the background geofence task.
 import '@/geo/geofenceTask';
+// Defines the reliable-mode background location task.
+import '@/geo/backgroundTracker';
 // Second: defines the periodic "is everything still working?" background check.
 import { registerHealthTask } from '@/features/health/healthTask';
 
@@ -137,7 +139,7 @@ export default function RootLayout() {
     if (actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
     stopAlarmSound();
     void dismissNotification(notification.request.identifier);
-    // App-status message ("GeoNote may be asleep") → Location & notifications.
+    // App-status message ("Blizu may be asleep") → Location & notifications.
     if (notification.request.content.data?.type === 'health') {
       router.push('/permissions');
       return;

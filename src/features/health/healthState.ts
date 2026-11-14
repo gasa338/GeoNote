@@ -16,6 +16,7 @@ export type HealthProblemId =
   | 'no-background'
   | 'no-notifications'
   | 'tracking-stopped'
+  | 'reliable-stopped'
   | 'background-restricted'
   | 'battery-optimized'
   | 'power-saver'

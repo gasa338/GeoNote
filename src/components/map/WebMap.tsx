@@ -176,7 +176,7 @@ export function WebMap({
         setSupportMultipleWindows={false}
         javaScriptEnabled
         // Identifies the app to tile servers (OpenStreetMap asks for this).
-        applicationNameForUserAgent="GeoNote/2.0 (com.geonote.app)"
+        applicationNameForUserAgent="Blizu/2.0 (com.geonote.app)"
       />
     </View>
   );

@@ -2,7 +2,8 @@
  * **Location & notifications** — everything needed to make reminders work,
  * and to find out why one did not pop up.
  *
- * 0. "Is GeoNote working?" — the app health card (`features/health/HealthCard`).
+ * 0. "Is Blizu working?" — the app health card (`features/health/HealthCard`).
+ *    Battery — reliable mode + battery use (`features/battery/BatteryCard`).
  * 1. Permissions (location, "all the time", notifications) + battery tip for
  *    phones that stop background apps (Xiaomi, Samsung, Huawei…).
  * 2. Tracking status, refresh, test notification, test alarm.
@@ -31,6 +32,7 @@ import {
   requestNotifications,
   type PermStatus,
 } from '@/geo/permissions';
+import { BatteryCard } from '@/features/battery/BatteryCard';
 import { HealthCard } from '@/features/health/HealthCard';
 import { handleGeofenceEvent } from '@/geo/reminderEngine';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -125,8 +127,11 @@ export default function PermissionsScreen() {
     <SheetScreen backLabel={t.features.settings.title} headerRight={null}>
       <AppText variant="display">{t.permissions.title}</AppText>
 
-      {/* 0. Is GeoNote working? */}
+      {/* 0. Is Blizu working? */}
       <HealthCard />
+
+      {/* 0b. Battery + reliable mode */}
+      <BatteryCard />
 
       {/* 1. Permissions */}
       <Section title={t.permissions.sectionPermissions}>

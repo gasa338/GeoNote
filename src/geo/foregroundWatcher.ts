@@ -7,7 +7,8 @@
  * - in the real build it makes reminders react within seconds while the app is
  *   open; when the app is closed the system geofencing takes over.
  *
- * It also shares the latest position with screens (map, distances) through
+ * The zone comparison itself is in `zoneChecker.ts` (shared with the
+ * background tracker). It also shares the latest position with screens (map, distances) through
  * {@link subscribeToPosition}.
  *
  * @module geo/foregroundWatcher
@@ -16,28 +17,13 @@
 import * as Location from 'expo-location';
 
 import { addLogEntry } from '@/data/activityLog';
-import { getAllZones } from '@/data/zones';
-import { distanceMeters } from '@/utils/geo';
 
-import { readInside, writeInside } from './geoState';
-import { handleGeofenceEvent } from './reminderEngine';
-
-/**
- * Extra distance outside the circle before we count it as "left" (GPS jumps).
- * Half the radius, between 10 and 30 m. Example: 20 m zone → 10 m, 100 m+ → 30 m.
- */
-function exitMargin(radius: number): number {
-  return Math.min(30, Math.max(10, radius * 0.5));
-}
+import { checkZonesAt } from './zoneChecker';
 
 /** The running position subscription, or `null` when not started. */
 let subscription: Location.LocationSubscription | null = null;
 /** The latest position we received. */
 let lastPosition: Location.LocationObject | null = null;
-/** False until the first position after start was processed. */
-let firstPositionHandled = false;
-/** True while a check is running, so two checks never overlap. */
-let isChecking = false;
 
 /** Functions that want every new position (map, distances). */
 const positionListeners = new Set<(position: Location.LocationObject) => void>();
@@ -56,43 +42,6 @@ export function getLastPosition(): Location.LocationObject | null {
   return lastPosition;
 }
 
-/** Compares the position with every active zone and reports enter/exit. */
-async function checkPosition(position: Location.LocationObject): Promise<void> {
-  if (isChecking) return;
-  isChecking = true;
-  try {
-    const zones = (await getAllZones()).filter((zone) => zone.active);
-    const inside = await readInside();
-
-    for (const zone of zones) {
-      const distance = distanceMeters(position.coords, zone);
-      const isInsideNow = distance <= zone.radius;
-      const wasInside = inside[zone.id] !== undefined;
-      const isClearlyOutside = distance > zone.radius + exitMargin(zone.radius);
-
-      if (!firstPositionHandled) {
-        // First position after opening the app: just remember where the user is.
-        // (Opening the app inside a zone is not an arrival — no sound on start.)
-        if (isInsideNow && !wasInside) inside[zone.id] = new Date().toISOString();
-        if (wasInside && isClearlyOutside) delete inside[zone.id];
-        continue;
-      }
-
-      if (isInsideNow && !wasInside) await handleGeofenceEvent(zone.id, 'enter', 'watcher');
-      else if (wasInside && isClearlyOutside) await handleGeofenceEvent(zone.id, 'exit', 'watcher');
-    }
-
-    if (!firstPositionHandled) {
-      await writeInside(inside);
-      firstPositionHandled = true;
-    }
-  } catch (error) {
-    console.warn('[watcher] check failed', error);
-  } finally {
-    isChecking = false;
-  }
-}
-
 /**
  * Starts following the position (if not already running).
  * Returns `false` when location permission is missing.
@@ -103,13 +52,14 @@ export async function startForegroundWatcher(): Promise<boolean> {
   const permission = await Location.getForegroundPermissionsAsync();
   if (permission.status !== 'granted') return false;
 
-  firstPositionHandled = false;
   subscription = await Location.watchPositionAsync(
     { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
     (position) => {
       lastPosition = position;
       positionListeners.forEach((listener) => listener(position));
-      void checkPosition(position);
+      // Also the first position after opening the app is checked normally: if you are
+      // inside a zone the phone never reported (it was asleep), the reminder comes now.
+      void checkZonesAt(position, 'watcher');
     },
   );
   void addLogEntry('info', 'Following your position while the app is open.');
@@ -124,5 +74,10 @@ export function stopForegroundWatcher(): void {
 
 /** Checks the last known position again right away (after zones changed). */
 export function checkPositionNow(): void {
-  if (lastPosition && firstPositionHandled) void checkPosition(lastPosition);
+  if (lastPosition) void checkZonesAt(lastPosition, 'watcher');
+}
+
+/** True while the app is open and following the GPS (the background tracker then rests). */
+export function isWatcherRunning(): boolean {
+  return subscription !== null;
 }

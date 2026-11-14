@@ -2,7 +2,7 @@
 title: Arhitektura (vodič kroz kod)
 ---
 
-# Arhitektura — vodič kroz kod (verzija 2.0 „GeoNote“)
+# Arhitektura — vodič kroz kod (verzija 2.0 „Blizu“)
 
 Ovaj dokument objašnjava **kako je aplikacija složena** i **gde šta menjaš**.
 Komentari u kodu su na engleskom (glavni jezik aplikacije), a vodič je na srpskom.
@@ -32,6 +32,7 @@ Zona = krug na mapi + šta da zapamtiš (beleška ili lista) + kako da te podset
 | `trigger` | pri ulasku, pri izlasku ili **oba** (`enter` / `exit` / `both`) |
 | `repeat` | svaki put / samo jednom |
 | `alertStyle` | obaveštenje ili alarm (vidi odeljak 5a) |
+| `address` | adresa (posebno polje u uređivaču; lupa je traži i pomera pin) |
 | `active` | „Podseti me pri ulasku“ |
 | `resetChecklistOnTrigger` | lista se odštiklira pri svakoj poseti |
 | `lastTriggerEvent` | šta je poslednje iskočilo (ulazak/izlazak) — za okidač „oba“ |
@@ -75,7 +76,7 @@ src/
 │   ├── map/WebMap.tsx          ← ★ mapa (Leaflet + OpenStreetMap, bez ključa)
 │   ├── map/mapHtml.ts          ← stranica mape; ovde se menja stil/izvor pločica
 │   ├── SheetScreen.tsx         ← raspored „mapa gore + list ispod“ iz dizajna
-│   ├── InAppBanner.tsx         ← „Kalenić pijaca je GeoNote 👋“ dok je app otvorena
+│   ├── InAppBanner.tsx         ← „Kalenić pijaca je blizu 👋“ dok je app otvorena
 │   ├── Logo.tsx                ← ★ logo
 │   └── ui/                     ← AppText, Button, Card, Chip…
 ├── data/                       ← zones, settings, social (praćenja), activityLog
@@ -91,12 +92,25 @@ src/
 
 ## 4. Kako radi okidanje (i zašto ponekad ne iskoči)
 
-Dva „čuvara“ rade zajedno:
+Tri izvora rade zajedno:
 
 | | Kad radi | Brzina |
 |---|---|---|
 | `geo/foregroundWatcher.ts` | **dok je aplikacija otvorena** (Expo Go i APK) | par sekundi |
-| sistemski geofencing (`geofenceManager.ts` + `geofenceTask.ts`) | **kad je zatvorena** (samo APK) | Android: 1–3 min |
+| `geo/backgroundTracker.ts` — **pouzdan režim** | kad je zatvorena (Android APK, podrazumevano uključen) | 15–30 s |
+| sistemski geofencing (`geofenceManager.ts` + `geofenceTask.ts`) | kad je zatvorena (APK) — rezerva | Android: 1–3 min, ili kasnije |
+
+Oba GPS izvora koriste isto poređenje sa zonama: `geo/zoneChecker.ts`.
+
+**Zašto pouzdan režim?** Sistemski geofencing predaje događaje aplikaciji preko Androidovog
+planera poslova. Kad Blizu danima nije otvaran, Android ga svrsta u „retko korišćene“ i te
+poslove zadržava — podsetnici kasne ili iskoče svi odjednom kad otvoriš aplikaciju.
+Pouzdan režim pokreće malu uslugu sa stalnim obaveštenjem („Blizu prati tvoje zone“); dok ona
+radi, Android aplikaciju smatra aktivnom i svaka GPS pozicija se odmah proverava.
+Isključuje se u Lokacija i obaveštenja → Baterija → Pouzdan režim.
+
+Krugovi se kod sistema registruju ponovo **samo kad se promene** (`geoState → writeRegionsSignature`),
+jer svaka registracija briše stanje i podsetnici oko tog trenutka bi se izgubili.
 
 Oba šalju događaj u `geo/reminderEngine.ts → handleGeofenceEvent()`, koji:
 1. proverava da li je to pravi ulazak/izlazak (ne „početno stanje“ posle pokretanja),
@@ -109,7 +123,7 @@ Podešavanja → Lokacija i obaveštenja → Aktivnost. Tu piše npr.
 „Kalenić pijaca: arrived, but the zone is paused“.
 
 **Okidač „oba“:** iskoči i kad uđeš i kad izađeš. Naslov se pravi po stvarnom događaju
-(„… je GeoNote 👋“ / „Napuštaš …“). Zona „samo jednom“ sa okidačem „oba“ se gasi tek posle izlaska.
+(„… je blizu 👋“ / „Napuštaš …“). Zona „samo jednom“ sa okidačem „oba“ se gasi tek posle izlaska.
 
 **Zona sačuvana dok stojiš u njoj** odmah iskoči (`store → fireIfAlreadyInside`).
 Otvaranje aplikacije dok si u zoni **ne** pravi zvuk.
@@ -118,7 +132,16 @@ Xiaomi / Samsung / Huawei gase aplikacije u pozadini — ekran dozvola to prepoz
 
 ---
 
-## 4a. Čuvar — „Da li GeoNote radi?“ (`src/features/health/`)
+## 4b. Baterija (`src/features/battery/`)
+
+Android ne dozvoljava aplikaciji da pročita tačan udeo svoje potrošnje. Blizu zato meri ono što može:
+nivo baterije telefona kroz vreme (najviše na 15 min), broj GPS provera na sat, i iz GPS režima
+procenjuje svoju potrošnju (Niska — samo sistem / Srednja — Wi-Fi lokacija / Veća — precizan GPS
+zbog zone manje od 100 m). Kartica „Baterija“ ima i dugme ka tačnoj potrošnji u podešavanjima telefona.
+
+---
+
+## 4a. Čuvar — „Da li Blizu radi?“ (`src/features/health/`)
 
 Telefoni (Xiaomi, Samsung, Huawei…) mogu da uspavaju aplikaciju zbog baterije — tada podsetnici
 **tiho** ne iskaču. Čuvar to otkriva na četiri načina:
@@ -127,11 +150,11 @@ Telefoni (Xiaomi, Samsung, Huawei…) mogu da uspavaju aplikaciju zbog baterije 
 |---|---|
 | **Provera** (`healthCheck.ts → runHealthCheck`) | dozvole, lokacija uključena, da li telefon još prati zone (ako ne — sam ih ponovo pokrene), optimizacija baterije, štednja baterije |
 | **Provera u pozadini** (`healthTask.ts`) | ista provera otprilike jednom na sat (expo-background-task / WorkManager) |
-| **Pas čuvar (watchdog)** | svaki „znak života“ pomera zakazano obaveštenje 12 h unapred. Ako je aplikacija uspavana, niko ga ne pomeri i **telefon sam prikaže** „GeoNote možda spava“ |
-| **Rupa i zakašnjenje** | pri otvaranju: „GeoNote je bio uspavan od … do …“; a ako GPS odmah po otvaranju nađe da si u zoni koju sistem nije javio → „Podsetnik je zakasnio“ |
+| **Pas čuvar (watchdog)** | svaki „znak života“ pomera zakazano obaveštenje 12 h unapred. Ako je aplikacija uspavana, niko ga ne pomeri i **telefon sam prikaže** „Blizu možda spava“ |
+| **Rupa i zakašnjenje** | pri otvaranju: „Blizu je bio uspavan od … do …“; a ako GPS odmah po otvaranju nađe da si u zoni koju sistem nije javio → „Podsetnik je zakasnio“ |
 
 Ozbiljni problemi pronađeni u pozadini javljaju se tihim obaveštenjem (kanal `app-status`,
-najviše jednom dnevno po problemu). Sve se vidi u kartici **„Da li GeoNote radi?“** na ekranu
+najviše jednom dnevno po problemu). Sve se vidi u kartici **„Da li Blizu radi?“** na ekranu
 Lokacija i obaveštenja (dugme „Popravi“ otvara pravo podešavanje), a traka na dnu mape
 upozori kad nešto nije u redu. Vremena i granice: `healthConfig.ts`.
 

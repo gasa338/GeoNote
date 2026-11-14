@@ -10,7 +10,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  */
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Geonote',
+  name: 'Blizu',
   slug: 'geonote',
   version: '2.0.0',
   orientation: 'portrait',
@@ -57,8 +57,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-location',
       {
         locationAlwaysAndWhenInUsePermission:
-          'Geonote uses your location, also when the app is closed, to remind you when you enter or leave one of your zones.',
-        locationWhenInUsePermission: 'Geonote uses your location to show the map and your zones.',
+          'Blizu uses your location, also when the app is closed, to remind you when you enter or leave one of your zones.',
+        locationWhenInUsePermission: 'Blizu uses your location to show the map and your zones.',
         isIosBackgroundLocationEnabled: true,
         isAndroidBackgroundLocationEnabled: true,
       },

@@ -2,7 +2,8 @@
  * **New zone / Edit zone** (design: "Nova zona").
  *
  * Sections:
- * 1. Where — name + address (search icon looks the name up). The place is picked
+ * 1. Where — **name** and **address** in two fields (the search icon in the
+ *    address field looks the address up and moves the pin). The place is picked
  *    on the **big map behind the sheet**: tap the map or drag the pin. Drag the
  *    sheet down to see more map.
  * 2. Zone radius — slider 20 m … 1 km, "About 3 min walk".
@@ -24,7 +25,7 @@
 import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SheetScreen } from '@/components/SheetScreen';
@@ -37,7 +38,7 @@ import { getLastPosition } from '@/geo/foregroundWatcher';
 import { usePosition } from '@/hooks/usePosition';
 import { useT } from '@/i18n/useT';
 import { useAppStore, useZone } from '@/store/useAppStore';
-import { radius as corner, spacing, typography, useTheme } from '@/theme';
+import { radius as corner, spacing, useTheme } from '@/theme';
 import type { LatLng } from '@/utils/geo';
 import { IS_EXPO_GO } from '@/utils/runtime';
 
@@ -231,8 +232,9 @@ function ZoneForm() {
     setAddress(await getAddress(newPoint));
   }
 
+  /** Looks up the typed address (or, if it is empty, the name) and moves the pin there. */
   async function searchAddress() {
-    const query = name.trim();
+    const query = (address ?? '').trim() || name.trim();
     if (!query) return;
     setSearching(true);
     try {
@@ -263,7 +265,7 @@ function ZoneForm() {
       const saved = await saveZone(
         {
           name: name.trim(),
-          address,
+          address: address?.trim() ? address.trim() : null,
           latitude: point.latitude,
           longitude: point.longitude,
           radius: zoneRadius,
@@ -350,28 +352,28 @@ function ZoneForm() {
       {/* 1. Where */}
       <View style={{ gap: spacing.md }}>
         <AppText variant="headline">{t.zoneEditor.where}</AppText>
-        <View style={[styles.placeBox, { borderColor: colors.border }]}>
-          <Icon name="location-outline" size={22} color="primary" />
-          <View style={{ flex: 1 }}>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              onSubmitEditing={() => void searchAddress()}
-              returnKeyType="search"
-              placeholder={t.zoneEditor.namePlaceholder}
-              placeholderTextColor={colors.textTertiary}
-              style={[typography.headline, { color: colors.text, paddingVertical: 2 }]}
-            />
-            {address ? (
-              <AppText variant="caption" color="textSecondary" numberOfLines={1}>
-                {address}
-              </AppText>
-            ) : null}
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={t.zoneEditor.search} hitSlop={10} onPress={() => void searchAddress()}>
-            {searching ? <ActivityIndicator color={colors.primary} /> : <Icon name="search" size={22} color="textSecondary" />}
-          </Pressable>
-        </View>
+        <TextField
+          label={t.zoneEditor.nameLabel}
+          icon="bookmark-outline"
+          value={name}
+          onChangeText={setName}
+          placeholder={t.zoneEditor.namePlaceholder}
+          returnKeyType="next"
+        />
+        <TextField
+          label={t.zoneEditor.addressLabel}
+          icon="location-outline"
+          value={address ?? ''}
+          onChangeText={setAddress}
+          onSubmitEditing={() => void searchAddress()}
+          returnKeyType="search"
+          placeholder={t.zoneEditor.addressPlaceholder}
+          right={
+            <Pressable accessibilityRole="button" accessibilityLabel={t.zoneEditor.search} hitSlop={10} onPress={() => void searchAddress()}>
+              {searching ? <ActivityIndicator color={colors.primary} /> : <Icon name="search" size={22} color="primary" />}
+            </Pressable>
+          }
+        />
 
         <View style={styles.pickHint}>
           <Icon name="hand-left-outline" size={16} color="primary" />
@@ -501,15 +503,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: corner.md,
     borderWidth: 1.5,
-  },
-  placeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderRadius: corner.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
   },
   pickHint: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   mapTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

@@ -2,7 +2,7 @@
  * @module components/ui/TextField
  * @category UI components
  */
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { radius, spacing, typography, useTheme } from '@/theme';
@@ -16,10 +16,12 @@ export interface TextFieldProps extends TextInputProps {
   label?: string;
   /** Icon inside the field, on the left. */
   icon?: IconName;
+  /** Element inside the field, on the right (e.g. a search button). */
+  right?: ReactNode;
 }
 
 /** A text input with a label. The border turns blue while typing. */
-export function TextField({ label, icon, multiline, style, onFocus, onBlur, ...rest }: TextFieldProps) {
+export function TextField({ label, icon, right, multiline, style, onFocus, onBlur, ...rest }: TextFieldProps) {
   const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
 
@@ -54,6 +56,7 @@ export function TextField({ label, icon, multiline, style, onFocus, onBlur, ...r
           }}
           style={[typography.body, styles.input, multiline && styles.multilineInput, { color: colors.text }, style]}
         />
+        {right}
       </View>
     </View>
   );

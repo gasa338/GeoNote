@@ -33,6 +33,7 @@ import type {
   ID,
   Language,
   ThemeMode,
+  TrackingMode,
   Zone,
   ZoneInput,
 } from '@/data/types';
@@ -73,6 +74,8 @@ export interface AppState {
   setLanguage: (language: Language) => Promise<void>;
   setThemeMode: (themeMode: ThemeMode) => Promise<void>;
   setAccentColor: (accentColor: AccentColor) => Promise<void>;
+  /** Reliable (permanent notification) or battery-saver background watching. */
+  setTrackingMode: (trackingMode: TrackingMode) => Promise<void>;
   /** Saves which sections appear in the bottom tab bar, in order. */
   setTabBar: (tabBar: FeatureId[]) => Promise<void>;
   /** Marks the welcome screen as seen. */
@@ -166,6 +169,11 @@ export const useAppStore = create<AppState>((set, get) => {
 
     setAccentColor: async (accentColor) => {
       set({ settings: await settingsStorage.updateSettings({ accentColor }) });
+    },
+
+    setTrackingMode: async (trackingMode) => {
+      set({ settings: await settingsStorage.updateSettings({ trackingMode }) });
+      await get().syncGeofences(); // starts or stops the background tracker
     },
 
     setTabBar: async (tabBar) => {

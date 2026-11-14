@@ -1,5 +1,5 @@
 /**
- * **Map** — the first screen (design: "GeoNote" home).
+ * **Map** — the first screen (design: "blizu" home).
  *
  * Top to bottom:
  * - logo + tagline, account button

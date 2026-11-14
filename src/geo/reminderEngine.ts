@@ -3,7 +3,8 @@
  *
  * Called by:
  * - `foregroundWatcher.ts` while the app is open (seconds after arriving),
- * - `geofenceTask.ts` when the app is closed (real build),
+ * - `backgroundTracker.ts` when the app is closed, in reliable mode (real build),
+ * - `geofenceTask.ts` when the app is closed (system geofencing, real build),
  * - the store, right after saving a zone you are standing in,
  * - the "Arrive at …" test button.
  *
@@ -41,6 +42,8 @@ export type EventSource =
   | 'system'
   /** The GPS watcher while the app is open. */
   | 'watcher'
+  /** The background tracker ("reliable mode", foreground service). */
+  | 'tracker'
   /** The zone was just saved while the user stands inside it. */
   | 'saved'
   /** The test button in Settings: always fires. */
@@ -74,7 +77,7 @@ export async function handleGeofenceEvent(zoneId: string, event: ZoneEvent, sour
       return;
     }
   }
-  if (source === 'system' || source === 'watcher') {
+  if (source === 'system' || source === 'watcher' || source === 'tracker') {
     if (event === 'enter' && wasInside) return; // already known — the other watcher was faster
     if (event === 'exit' && !wasInside) return;
   }
@@ -94,7 +97,7 @@ export async function handleGeofenceEvent(zoneId: string, event: ZoneEvent, sour
   }
 
   // The system never reported this arrival and the GPS caught it only now,
-  // right after the app was opened → the phone had put GeoNote to sleep.
+  // right after the app was opened → the phone had put Blizu to sleep.
   if (source === 'watcher' && event === 'enter' && wasJustOpened()) await recordLateCatch(name);
 
   // 3. Show it.

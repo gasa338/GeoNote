@@ -1,5 +1,5 @@
 /**
- * **"Is GeoNote working?"** card (top of Location & notifications).
+ * **"Is Blizu working?"** card (top of Location & notifications).
  *
  * Shows the last check, the last background check, and every problem with a
  * "Fix" button that opens the right place (permission dialog, location
@@ -19,6 +19,7 @@ import {
   requestForegroundLocation,
   requestNotifications,
 } from '@/geo/permissions';
+import { refreshGeofences } from '@/geo/geofenceManager';
 import { formatDateTime } from '@/i18n/dictionaries';
 import { useLanguage, useT } from '@/i18n/useT';
 import { spacing } from '@/theme';
@@ -35,6 +36,7 @@ const PROBLEM_ICONS: Record<HealthProblemId, IconName> = {
   'no-background': 'navigate-outline',
   'no-notifications': 'notifications-off-outline',
   'tracking-stopped': 'warning-outline',
+  'reliable-stopped': 'pulse-outline',
   'background-restricted': 'hourglass-outline',
   'battery-optimized': 'battery-half-outline',
   'power-saver': 'battery-dead-outline',
@@ -68,6 +70,9 @@ async function fixProblem(id: HealthProblemId): Promise<void> {
       return;
     case 'battery-optimized':
       return openAndroidSettings('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS');
+    case 'reliable-stopped':
+      await refreshGeofences(); // starts the background tracker again (allowed while the app is open)
+      return;
     case 'power-saver':
       return openAndroidSettings('android.settings.BATTERY_SAVER_SETTINGS');
     default:

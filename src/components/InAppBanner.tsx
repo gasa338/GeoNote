@@ -33,7 +33,7 @@ interface BannerContent {
 const VISIBLE_MS = 12000;
 
 /**
- * The banner from the design ("Kalenić pijaca je GeoNote 👋") that slides in at
+ * The banner from the design ("Kalenić pijaca je blizu 👋") that slides in at
  * the top **while the app is open**, instead of the system notification.
  *
  * - "Open list" → zone details.

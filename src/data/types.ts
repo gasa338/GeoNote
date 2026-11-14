@@ -101,6 +101,15 @@ export type AccentColor = 'blue' | 'purple' | 'green' | 'orange' | 'pink';
 export type FeatureId = 'map' | 'zones' | 'places' | 'following' | 'events' | 'account' | 'settings';
 
 /** App-wide settings saved on the phone. */
+/**
+ * How the app watches zones when it is closed (Android):
+ * - `reliable` — a small permanent notification keeps Blizu awake and the GPS
+ *   checks the zones itself. Reminders come on time, uses a bit more battery.
+ * - `saver` — only the phone's own geofencing. Least battery, but the phone may
+ *   delay or drop reminders when Blizu was not opened for a while.
+ */
+export type TrackingMode = 'reliable' | 'saver';
+
 export interface AppSettings {
   language: Language;
   themeMode: ThemeMode;
@@ -109,4 +118,6 @@ export interface AppSettings {
   tabBar: FeatureId[];
   /** True after the user finished the welcome screen once. */
   onboardingDone: boolean;
+  /** Background watching mode (see {@link TrackingMode}). */
+  trackingMode: TrackingMode;
 }
